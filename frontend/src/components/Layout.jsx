@@ -1,15 +1,13 @@
 import React from "react";
 import { useAuth } from "../auth/AuthContext";
 
-export default function Layout({ title, route, setRoute, children }) {
-  const { isAuthed, logout } = useAuth();
-
-  const NavBtn = ({ id, label }) => (
+function NavBtn({ id, label, isActive, onSelect }) {
+  return (
     <button
-      onClick={() => setRoute(id)}
+      onClick={() => onSelect(id)}
       className={[
         "rounded-xl px-3 py-2 text-sm border",
-        route === id
+        isActive
           ? "bg-white text-slate-950 border-white"
           : "border-slate-800 text-slate-200 hover:bg-slate-900",
       ].join(" ")}
@@ -17,6 +15,10 @@ export default function Layout({ title, route, setRoute, children }) {
       {label}
     </button>
   );
+}
+
+export default function Layout({ title, route, setRoute, children }) {
+  const { isAuthed, logout } = useAuth();
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -30,9 +32,24 @@ export default function Layout({ title, route, setRoute, children }) {
           <div className="flex items-center gap-2">
             {isAuthed && (
               <>
-                <NavBtn id="dashboard" label="Dashboard" />
-                <NavBtn id="transactions" label="Movimientos" />
-                <NavBtn id="categories" label="Categorías" />
+                <NavBtn
+                  id="dashboard"
+                  label="Dashboard"
+                  isActive={route === "dashboard"}
+                  onSelect={setRoute}
+                />
+                <NavBtn
+                  id="transactions"
+                  label="Movimientos"
+                  isActive={route === "transactions"}
+                  onSelect={setRoute}
+                />
+                <NavBtn
+                  id="categories"
+                  label="Categorías"
+                  isActive={route === "categories"}
+                  onSelect={setRoute}
+                />
                 <button
                   onClick={logout}
                   className="rounded-xl border border-slate-700 px-3 py-2 text-sm hover:bg-slate-900"
