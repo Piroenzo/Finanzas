@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { AuthProvider, useAuth } from "./auth/AuthContext";
+import { AuthProvider } from "./auth/AuthProvider";
+import { useAuth } from "./auth/AuthContext";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
