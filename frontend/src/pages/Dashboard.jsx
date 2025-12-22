@@ -14,7 +14,7 @@ function Card({ label, value, variant = "neutral" }) {
     <div className={`rounded-2xl border p-4 ${variants[variant]}`}>
       <p className="text-xs text-slate-400">{label}</p>
       <p className="mt-1 text-2xl font-bold">
-        ${Number(value).toLocaleString("es-AR")}
+        ${Number(value || 0).toLocaleString("es-AR")}
       </p>
     </div>
   );
@@ -31,6 +31,7 @@ function TopList({ title, items, variant }) {
   return (
     <div className={`rounded-2xl border ${borderColor} ${bgColor} p-4`}>
       <p className={`text-sm font-semibold ${titleColor}`}>{title}</p>
+
       <div className="mt-3 grid gap-2">
         {items.map((x) => (
           <div
@@ -39,10 +40,11 @@ function TopList({ title, items, variant }) {
           >
             <span className="text-sm text-slate-200">{x.name}</span>
             <span className="text-sm font-semibold">
-              ${Number(x.total).toLocaleString("es-AR")}
+              ${Number(x.total || 0).toLocaleString("es-AR")}
             </span>
           </div>
         ))}
+
         {items.length === 0 && (
           <p className="text-sm text-slate-400">
             Todavía no hay movimientos con categoría.
@@ -55,34 +57,46 @@ function TopList({ title, items, variant }) {
 
 export default function Dashboard() {
   const { token } = useAuth();
+
   const [month, setMonth] = useState(monthNow());
   const [txs, setTxs] = useState([]);
   const [categories, setCategories] = useState([]);
+
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [typeFilter, setTypeFilter] = useState("all");
+
+  const [typeFilter, setTypeFilter] = useState("all"); // all | income | expense
   const [refreshIndex, setRefreshIndex] = useState(0);
 
   useEffect(() => {
+    if (!token) return;
+
     let alive = true;
+
     (async () => {
       try {
         setLoading(true);
         setError("");
+
         const [movs, cats] = await Promise.all([
           api(`/transactions?month=${month}`, { token }),
           api(`/categories`, { token }),
         ]);
+
         if (!alive) return;
-        setTxs(movs);
-        setCategories(cats);
+
+        setTxs(Array.isArray(movs) ? movs : []);
+        setCategories(Array.isArray(cats) ? cats : []);
       } catch (e) {
-        if (alive) setError(e.message || "Error");
+        if (alive) setError(e?.message || "Error");
       } finally {
         if (alive) setLoading(false);
       }
     })();
-    return () => (alive = false);
+
+    return () => {
+      alive = false;
+    };
   }, [month, token, refreshIndex]);
 
   const catNameById = useMemo(() => {
@@ -109,21 +123,22 @@ export default function Dashboard() {
       .filter((t) => t.type === "expense")
       .reduce((a, t) => a + (t.amount || 0), 0);
 
+    const count = filteredTxs.length;
+
     return {
       incomes,
       expenses,
       balance: incomes - expenses,
-      count: filteredTxs.length,
-      avgTicket:
-        filteredTxs.length === 0
-          ? 0
-          : (incomes + expenses) / Math.max(filteredTxs.length, 1),
+      count,
+      avgTicket: count === 0 ? 0 : (incomes + expenses) / count,
     };
   }, [filteredTxs]);
 
+  // Top por categoría del mes completo (no lo afecto por el filtro "Últimos movimientos")
   const topByCategory = useMemo(() => {
     const build = (type) => {
       const totals = new Map(); // catId -> total
+
       txs
         .filter((t) => t.type === type && t.category_id)
         .forEach((t) => {
@@ -147,15 +162,13 @@ export default function Dashboard() {
     };
   }, [txs, catNameById]);
 
-  const sortedByDate = useMemo(
-    () =>
-      [...filteredTxs].sort((a, b) => {
-        const aDate = new Date(a.date || 0).getTime();
-        const bDate = new Date(b.date || 0).getTime();
-        return bDate - aDate;
-      }),
-    [filteredTxs]
-  );
+  const sortedByDate = useMemo(() => {
+    return [...filteredTxs].sort((a, b) => {
+      const aDate = new Date(a.date || 0).getTime();
+      const bDate = new Date(b.date || 0).getTime();
+      return bDate - aDate;
+    });
+  }, [filteredTxs]);
 
   const largestByType = useMemo(() => {
     const findLargest = (type) => {
@@ -166,7 +179,10 @@ export default function Dashboard() {
       );
     };
 
-    return { income: findLargest("income"), expense: findLargest("expense") };
+    return {
+      income: findLargest("income"),
+      expense: findLargest("expense"),
+    };
   }, [txs]);
 
   return (
@@ -183,7 +199,9 @@ export default function Dashboard() {
           >
             ←
           </button>
+
           <span className="text-sm text-slate-400">Mes:</span>
+
           <input
             type="month"
             value={month}
@@ -191,6 +209,7 @@ export default function Dashboard() {
             disabled={loading}
             className="rounded-xl bg-slate-900 border border-slate-800 px-3 py-2 text-sm outline-none focus:border-slate-600"
           />
+
           <button
             onClick={handleNextMonth}
             disabled={loading}
@@ -199,6 +218,7 @@ export default function Dashboard() {
           >
             →
           </button>
+
           <button
             onClick={handleRefresh}
             disabled={loading}
@@ -232,12 +252,14 @@ export default function Dashboard() {
           <p className="text-xs text-slate-400">Movimientos del mes</p>
           <p className="text-lg font-semibold text-white">{summary.count}</p>
         </div>
+
         <div>
           <p className="text-xs text-slate-400">Ticket promedio</p>
           <p className="text-lg font-semibold text-white">
-            ${summary.avgTicket.toLocaleString("es-AR")}
+            ${Number(summary.avgTicket || 0).toLocaleString("es-AR")}
           </p>
         </div>
+
         <div>
           <p className="text-xs text-slate-400">Relación ingreso/gasto</p>
           <p className="text-lg font-semibold text-white">
@@ -270,6 +292,7 @@ export default function Dashboard() {
                 {filteredTxs.length} resultados
               </span>
             </div>
+
             <div className="flex items-center gap-2">
               {["all", "income", "expense"].map((option) => (
                 <button
@@ -307,10 +330,11 @@ export default function Dashboard() {
                 >
                   <div className="flex items-center justify-between">
                     <span className={`font-semibold ${amountColor}`}>
-                      ${Number(t.amount).toLocaleString("es-AR")}
+                      ${Number(t.amount || 0).toLocaleString("es-AR")}
                     </span>
                     <span className="text-xs text-slate-400">{t.date}</span>
                   </div>
+
                   <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
                     <span className="rounded-full border border-slate-800 bg-slate-900 px-2 py-0.5">
                       {isIncome ? "Ingreso" : "Gasto"}
@@ -346,17 +370,21 @@ export default function Dashboard() {
                 className="rounded-xl border border-slate-800 bg-slate-950/40 p-3"
               >
                 <p className="text-xs text-slate-400">{label}</p>
+
                 {largest ? (
                   <>
                     <p className={`text-xl font-semibold ${color}`}>
-                      ${Number(largest.amount).toLocaleString("es-AR")}
+                      ${Number(largest.amount || 0).toLocaleString("es-AR")}
                     </p>
                     <p className="text-xs text-slate-400">{largest.date}</p>
+
                     <p className="text-sm text-slate-300">
                       {largest.category_id
-                        ? catNameById.get(largest.category_id) || `#${largest.category_id}`
+                        ? catNameById.get(largest.category_id) ||
+                          `#${largest.category_id}`
                         : "Sin categoría"}
                     </p>
+
                     {largest.note && (
                       <p className="text-xs text-slate-400 mt-1">{largest.note}</p>
                     )}
@@ -372,3 +400,4 @@ export default function Dashboard() {
     </div>
   );
 }
+
