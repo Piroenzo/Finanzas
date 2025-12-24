@@ -8,5 +8,11 @@ def create_app():
     allowed = os.getenv("CORS_ORIGIN", "http://localhost:5173")
     CORS(app, resources={r"/*": {"origins": allowed}}, supports_credentials=True)
 
-    # ... tus blueprints/routes
+    # TODO: registrar blueprints / rutas
+    # from .routes.auth import auth_bp
+    # app.register_blueprint(auth_bp, url_prefix="/auth")
+
     return app
+
+# 👇 ESTA LÍNEA ES LA CLAVE PARA GUNICORN
+app = create_app()
