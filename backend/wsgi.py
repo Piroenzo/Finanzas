@@ -1,6 +1,12 @@
-from app import create_app
+from flask import Flask
+from flask_cors import CORS
+import os
 
-app = create_app()
+def create_app():
+    app = Flask(__name__)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+    allowed = os.getenv("CORS_ORIGIN", "http://localhost:5173")
+    CORS(app, resources={r"/*": {"origins": allowed}}, supports_credentials=True)
+
+    # ... tus blueprints/routes
+    return app
